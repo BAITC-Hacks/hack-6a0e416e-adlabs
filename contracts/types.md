@@ -106,14 +106,27 @@ type ActivityHistoryItem = {
 };
 type ActivityHistoryResponse = { employee_id: string; activities: ActivityHistoryItem[] };
 type NavigatorRequest = {
-  question: string; intent?: "why_course" | "blockers" | "first_skill" |
-    "after_activity" | "faster_route" | "four_hours" | "general";
+  question: string; intent?: "why_course" | "compare" | "blockers" | "first_skill" |
+    "after_activity" | "faster_route" | "four_hours" | "data_sources" | "disagree" | "general";
   event_id?: string; weekly_hours?: number;
+};
+type AIExplanation = {
+  summary: string; why_recommended: string[]; expected_impact: string[];
+  limitations: string[]; next_step: string; confidence: "high" | "medium" | "low";
+  evidence_ids: string[];
 };
 type NavigatorResponse = {
   employee_id: string; provider: "template" | "openai" | "nvidia"; intent: string;
   summary: string; profile_facts: string[]; reason: string; expected_effect: string;
   limitation: string; next_step: string; evidence_ids: string[];
+  ai_explanation: AIExplanation | null;
+};
+type AIStatusResponse = {
+  configured_provider: "template" | "openai" | "nvidia";
+  active_provider: "template" | "openai" | "nvidia";
+  fallback_provider: "template" | "openai" | "nvidia";
+  nvidia_configured: boolean; openai_configured: boolean;
+  template_fallback_available: boolean;
 };
 
 type DepartmentSummary = {

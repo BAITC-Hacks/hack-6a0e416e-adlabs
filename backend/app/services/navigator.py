@@ -162,10 +162,24 @@ def ask_navigator(data: Dataset, employee_id: str, question: str, intent: str | 
         effect = "Дополнительная активность не увеличит готовность к этой цели."
         next_step = "Обсудите следующий карьерный шаг с руководителем."
     elif not selected:
-        summary = "Есть разрыв навыков, но сейчас нет подходящей активности."
-        reason = f"Осталось {gap['total_gap_points']} баллов разрыва."
-        effect = "Прогноз по активности недоступен."
-        next_step = f"Начните с навыка {first['name']} ({first['current_level']} из {first['required_level']})." if first else "Проверьте целевой профиль."
+        if event_id:
+            event = data.events[event_id]
+            unmet = [
+                f"{skill_id}: {data.effective_skills[employee_id].get(skill_id, 0)} из {level}"
+                for skill_id, level in event["prerequisites"].items()
+                if data.effective_skills[employee_id].get(skill_id, 0) < level
+            ]
+            summary = f"{event['title']} сейчас недоступна для записи."
+            reason = "Не выполнены prerequisites: " + ", ".join(unmet) + "." if unmet else "Активность не проходит текущие условия участия."
+            effect = "Прогноз для недоступной активности не рассчитывается."
+            next_step = f"Рассмотрите доступную активность {top['title']}." if top else "Проверьте требования и доступные активности с HR."
+            evidence.append(event_id)
+            evidence.extend(event["prerequisites"])
+        else:
+            summary = "Есть разрыв навыков, но сейчас нет подходящей активности."
+            reason = f"Осталось {gap['total_gap_points']} баллов разрыва."
+            effect = "Прогноз по активности недоступен."
+            next_step = f"Начните с навыка {first['name']} ({first['current_level']} из {first['required_level']})." if first else "Проверьте целевой профиль."
     else:
         matched = selected["matched_skill_gains"]
         names = ", ".join(f"{skill['name']} (+{skill['gap_closed']})" for skill in matched[:3])
@@ -217,4 +231,58 @@ def ask_navigator(data: Dataset, employee_id: str, question: str, intent: str | 
               "summary": summary, "profile_facts": facts, "reason": reason,
               "expected_effect": effect, "limitation": limitation, "next_step": next_step,
               "evidence_ids": list(dict.fromkeys(evidence))}
+    activities = []
+    for rec in recommendations + ([selected] if selected and selected not in recommendations else []):
+        event = data.events[rec["event_id"]]
+        activities.append({
+            "event_id": rec["event_id"], "title": rec["title"], "rank": len(activities) + 1,
+            "score": rec["score"], "score_breakdown": rec["score_breakdown"],
+            "duration_hours": rec["duration_hours"], "next_session_date": rec["next_session_date"],
+            "matched_skill_gains": rec["matched_skill_gains"],
+            "projected_impact": rec["projected_impact"],
+            "prerequisites": [
+                {"skill_id": skill_id, "required_level": level,
+                 "current_level": data.effective_skills[employee_id].get(skill_id, 0),
+                 "met": data.effective_skills[employee_id].get(skill_id, 0) >= level}
+                for skill_id, level in event["prerequisites"].items()
+            ],
+        })
+    blocked_activity = None
+    if event_id and selected is None:
+        event = data.events[event_id]
+        blocked_activity = {
+            "event_id": event_id, "title": event["title"], "eligible": False,
+            "prerequisites": [
+                {"skill_id": skill_id, "required_level": level,
+                 "current_level": data.effective_skills[employee_id].get(skill_id, 0),
+                 "met": data.effective_skills[employee_id].get(skill_id, 0) >= level}
+                for skill_id, level in event["prerequisites"].items()
+            ],
+        }
+    allowed_ids = [employee_id]
+    allowed_ids.extend(skill["skill_id"] for skill in gap["skills"])
+    for activity in activities:
+        allowed_ids.append(activity["event_id"])
+        allowed_ids.extend(gain["skill_id"] for gain in activity["matched_skill_gains"])
+        allowed_ids.extend(prerequisite["skill_id"] for prerequisite in activity["prerequisites"])
+    if blocked_activity:
+        allowed_ids.append(event_id)
+        allowed_ids.extend(prerequisite["skill_id"] for prerequisite in blocked_activity["prerequisites"])
+    result["_evidence_packet"] = {
+        "employee": {"employee_id": employee_id, "full_name": employee["full_name"],
+                     "role": employee["role"], "grade": employee["grade"],
+                     "career_goal": employee.get("career_goal")},
+        "target": target,
+        "skill_gap": {"status": gap["status"], "progress_pct": gap["progress_pct"],
+                      "total_gap_points": gap["total_gap_points"],
+                      "critical_gap_points": gap["critical_gap_points"], "skills": gap["skills"]},
+        "activities": activities,
+        "blocked_activity": blocked_activity,
+        "roadmap": [{"event_id": step["recommendation"]["event_id"],
+                     "progress_before_pct": step["progress_before_pct"],
+                     "progress_after_pct": step["progress_after_pct"]}
+                    for step in roadmap["steps"]],
+        "deterministic_answer": result.copy(),
+        "allowed_evidence_ids": list(dict.fromkeys(allowed_ids)),
+    }
     return result

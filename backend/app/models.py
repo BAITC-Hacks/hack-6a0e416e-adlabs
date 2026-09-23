@@ -259,3 +259,13 @@ class NavigatorResponse(BaseModel):
     limitation: str
     next_step: str
     evidence_ids: list[str]
+    ai_explanation: dict | None = None
+
+
+class AIStatusResponse(BaseModel):
+    configured_provider: Literal["template", "openai", "nvidia"]
+    active_provider: Literal["template", "openai", "nvidia"]
+    fallback_provider: Literal["template", "openai", "nvidia"]
+    nvidia_configured: bool
+    openai_configured: bool
+    template_fallback_available: bool

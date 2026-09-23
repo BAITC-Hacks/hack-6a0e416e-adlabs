@@ -164,19 +164,3 @@ def test_repeatable_history_can_enroll_again_and_time_budget_is_respected():
     }).json()
     assert answer["intent"] == "four_hours"
     assert "2 ч в неделю" in answer["summary"]
-
-
-def test_optional_provider_cannot_replace_grounded_facts(monkeypatch):
-    import io
-    from backend.app.services import ai_provider
-
-    monkeypatch.setenv("OPENAI_API_KEY", "test-only-key")
-    source = {"summary": "Готовность 50%.", "reason": "Разрыв 2 балла.", "provider": "template"}
-    monkeypatch.setattr(ai_provider.request, "urlopen", lambda *_args, **_kwargs: io.BytesIO(
-        b'{"choices":[{"message":{"content":"invented course"}}]}'))
-    assert OpenAIProvider().rephrase(source, "Почему?") == source
-    monkeypatch.setattr(ai_provider.request, "urlopen", lambda *_args, **_kwargs: io.BytesIO(
-        b'{"choices":[{"message":{"content":"context"}}]}'))
-    result = OpenAIProvider().rephrase(source, "Почему?")
-    assert result["summary"] == "Готовность 50%. Разрыв 2 балла."
-    assert result["provider"] == "openai"

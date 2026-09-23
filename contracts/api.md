@@ -7,6 +7,7 @@ The backend loads dataset files relative to the repository, independent of launc
 | Method and path | Request | 200 response | Other responses |
 | --- | --- | --- | --- |
 | `GET /api/health` | None | `HealthResponse` | `503 data_unavailable` if data cannot load |
+| `GET /api/ai/status` | None | `AIStatusResponse` | None |
 | `GET /api/employees` | None | `EmployeeListResponse`, all employees sorted by full name then ID | `503 data_unavailable` |
 | `GET /api/employees/{employee_id}` | Path ID | `EmployeeProfileResponse` | `404 not_found` |
 | `GET /api/employees/{employee_id}/skill-gap` | Path ID | `SkillGapResponse` | `404 not_found` |
@@ -36,7 +37,9 @@ The backend loads dataset files relative to the repository, independent of launc
 
 `activity-history` returns all historical event rows for that employee, sorted newest first, with the source event title. Current demo statuses appear first with `source: "demo"` and `date: null` because the dataset does not provide a date for a simulated action.
 
-`navigator/ask` accepts an optional intent (`why_course`, `blockers`, `first_skill`, `after_activity`, `faster_route`, `four_hours`, or `general`). It derives facts and projected effects from the same engine functions as the dashboard without mutating skills. A stated weekly time budget such as “2 часа” is parsed from the question unless `weekly_hours` is supplied. `evidence_ids` reference actual employee, skill, and event IDs. The default template works without credentials. Optional OpenAI/NVIDIA adapters choose between brief and contextual summaries assembled from computed text; model output cannot introduce facts. Provider failures fall back to the template answer. The optional network call runs after releasing dataset state lock.
+`navigator/ask` accepts an optional intent (`why_course`, `compare`, `blockers`, `first_skill`, `after_activity`, `faster_route`, `four_hours`, `data_sources`, `disagree`, or `general`). It derives facts and projected effects from the same engine functions as the dashboard without mutating skills. A stated weekly time budget such as “2 часа” is parsed from the question unless `weekly_hours` is supplied. `evidence_ids` reference actual employee, skill, and event IDs. External providers receive a bounded evidence packet, return a structured explanation validated by Pydantic, and cannot change ranking or forecasts. A valid external response adds `ai_explanation` with `summary`, `why_recommended`, `expected_impact`, `limitations`, `next_step`, `confidence`, and `evidence_ids`; offline template responses return null for that field. Failures route to the configured fallback provider, then template. The network call runs after releasing the dataset state lock.
+
+`GET /api/ai/status` returns `configured_provider`, `active_provider` (provider of the most recent successful Navigator answer in this process), `fallback_provider`, `nvidia_configured`, `openai_configured`, and `template_fallback_available`. It never returns keys or models.
 
 `hr/overview` aggregates current effective state: employee and goal counts, ready/no-target counts, average target progress, grade counts, and department summaries. Exclude null progress from averages.
 

@@ -13,9 +13,9 @@ from .data import Dataset, DatasetError, GRADES, load_dataset
 from .models import (
     ActivityActionResponse, ActivityDetailsResponse, ActivityHistoryResponse, CompletionResponse, EmployeeListResponse, EmployeeProfileResponse, ErrorResponse,
     HROverviewResponse, HealthResponse, RecommendationsResponse, RoadmapResponse, SkillGapResponse,
-    NavigatorRequest, NavigatorResponse,
+    AIStatusResponse, NavigatorRequest, NavigatorResponse,
 )
-from .services.ai_provider import get_ai_provider
+from .services.ai_provider import get_ai_provider, get_ai_status
 from .services.navigator import (
     activity_details, ask_navigator, build_roadmap, calculate_skill_gap, get_employee_profile, recommend_activities,
     simulate_activity_completion,
@@ -78,6 +78,11 @@ def health():
             "skills": len(data.catalog), "role_profiles": len(data.role_profiles),
         },
     }
+
+
+@app.get("/api/ai/status", response_model=AIStatusResponse)
+def ai_status():
+    return get_ai_status()
 
 
 @app.get("/api/employees", response_model=EmployeeListResponse, responses={503: {"model": ErrorResponse}})
@@ -184,7 +189,8 @@ def navigator_ask(employee_id: str, body: NavigatorRequest):
     with data.lock:
         answer = ask_navigator(data, employee_id, body.question, body.intent, body.event_id,
                                body.weekly_hours, provider)
-    return provider.rephrase(answer, body.question)
+    evidence_packet = answer.pop("_evidence_packet")
+    return provider.rephrase(answer, body.question, evidence_packet)
 
 
 @app.post(

@@ -121,3 +121,32 @@ M  frontend/src/App.tsx
 M  frontend/src/types.ts
 A  scripts/demo_smoke_test.py
 ```
+
+## 2026-09-23 17:41:09 +0500
+
+- member: adil
+- role: git-manager
+- branch: adil/integration-mvp
+- summary: checkpoint AI integration and demo flow
+
+```text
+ M .env.example
+ M README.md
+ M backend/app/main.py
+ M backend/app/models.py
+ M backend/app/services/ai_provider.py
+ M backend/app/services/navigator.py
+ M backend/requirements.txt
+ M backend/tests/test_api.py
+ M contracts/api.md
+ M contracts/types.md
+ M docs/FINAL_CHECKLIST.md
+ M docs/JURY_QA.md
+ M docs/JURY_SCORECARD.md
+ M frontend/src/App.tsx
+ M frontend/src/types.ts
+?? backend/tests/test_ai_provider.py
+?? docs/AI_INTEGRATION.md
+?? scripts/check_ai_providers.py
+?? scripts/eval_ai_providers.py
+```

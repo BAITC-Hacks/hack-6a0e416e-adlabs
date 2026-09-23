@@ -90,6 +90,11 @@ export type NavigatorResponse = {
   employee_id: string; provider: 'template' | 'openai' | 'nvidia'; intent: string;
   summary: string; profile_facts: string[]; reason: string; expected_effect: string;
   limitation: string; next_step: string; evidence_ids: string[];
+  ai_explanation: {
+    summary: string; why_recommended: string[]; expected_impact: string[];
+    limitations: string[]; next_step: string; confidence: 'high' | 'medium' | 'low';
+    evidence_ids: string[];
+  } | null;
 };
 export type DepartmentSummary = {
   department: string; employee_count: number;
