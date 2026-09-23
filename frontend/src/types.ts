@@ -85,7 +85,7 @@ export type ActivityDetailsResponse = {
 export type ActivityActionResponse = { employee_id: string; event_id: string; status: 'enrolled' | 'in_progress' };
 export type ActivityHistoryItem = { record_id: string | null; event_id: string; title: string; date: string | null; status: string; source: 'dataset' | 'demo' };
 export type ActivityHistoryResponse = { employee_id: string; activities: ActivityHistoryItem[] };
-export type NavigatorIntent = 'why_course' | 'blockers' | 'first_skill' | 'after_activity' | 'faster_route' | 'four_hours' | 'general';
+export type NavigatorIntent = 'why_course' | 'compare' | 'blockers' | 'first_skill' | 'after_activity' | 'faster_route' | 'four_hours' | 'data_sources' | 'disagree' | 'general';
 export type NavigatorResponse = {
   employee_id: string; provider: 'template' | 'openai' | 'nvidia'; intent: string;
   summary: string; profile_facts: string[]; reason: string; expected_effect: string;

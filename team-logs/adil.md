@@ -101,3 +101,23 @@ M  frontend/src/main.tsx
 M  frontend/src/types.ts
 M  frontend/vite.config.ts
 ```
+
+## 2026-09-23 17:11:32 +0500
+
+- member: adil
+- role: git-manager
+- branch: adil/integration-mvp
+- summary: harden Career Quest demo and navigator
+
+```text
+M  README.md
+M  backend/app/models.py
+M  backend/app/services/navigator.py
+A  docs/DEMO_SCRIPT.md
+A  docs/FINAL_CHECKLIST.md
+A  docs/JURY_QA.md
+A  docs/JURY_SCORECARD.md
+M  frontend/src/App.tsx
+M  frontend/src/types.ts
+A  scripts/demo_smoke_test.py
+```

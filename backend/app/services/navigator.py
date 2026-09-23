@@ -125,9 +125,12 @@ def ask_navigator(data: Dataset, employee_id: str, question: str, intent: str | 
     lower = question.lower()
     hours_match = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:час|hour)", lower)
     if intent is None:
-        intent = ("after_activity" if any(word in lower for word in ("после", "изменится", "заверш")) else
+        intent = ("data_sources" if any(word in lower for word in ("какие данные", "источник", "данные использ")) else
+                  "disagree" if any(word in lower for word in ("не соглас", "оспор", "не подходит")) else
+                  "compare" if any(word in lower for word in ("лучше второй", "лучше другой", "сравни", "первую и вторую")) else
+                  "after_activity" if any(word in lower for word in ("после", "изменится", "заверш")) else
                   "blockers" if any(word in lower for word in ("мешает", "барьер", "разрыв")) else
-                  "four_hours" if hours_match else
+                  "four_hours" if hours_match or any(word in lower for word in ("четыре час", "4 ч", "4ч")) else
                   "faster_route" if any(word in lower for word in ("быстр", "маршрут")) else
                   "why_course" if any(word in lower for word in ("почему", "курс", "активност")) else
                   "first_skill" if any(word in lower for word in ("перв", "навык")) else "general")
@@ -169,7 +172,29 @@ def ask_navigator(data: Dataset, employee_id: str, question: str, intent: str | 
         reason = f"{selected['title']} сокращает разрыв по навыкам: {names}."
         effect = f"После выполнения прогноз готовности: {selected['projected_impact']['progress_after_pct']}% (+{selected['projected_impact']['progress_delta_pct']} п.п.)."
         next_step = f"Откройте детали {selected['title']} и проверьте условия участия."
-        if intent == "blockers":
+        if intent == "compare" and len(recommendations) > 1:
+            other = recommendations[1]
+            evidence.append(other["event_id"])
+            summary = f"{selected['title']} выше {other['title']}: {selected['score']} против {other['score']} баллов."
+            reason = (f"Оценка складывается из покрытия критичных навыков, закрытия разрыва, связи с целью, "
+                      f"вероятности завершения и времени. Первые два фактора: "
+                      f"{selected['score_breakdown']['critical_skill_coverage']} + {selected['score_breakdown']['total_gap_coverage']} "
+                      f"против {other['score_breakdown']['critical_skill_coverage']} + {other['score_breakdown']['total_gap_coverage']}.")
+            effect = (f"Прогноз готовности: +{selected['projected_impact']['progress_delta_pct']} п.п. против "
+                      f"+{other['projected_impact']['progress_delta_pct']} п.п. после второй активности.")
+            next_step = f"Сравните детали и расписание {selected['event_id']} и {other['event_id']} перед записью."
+        elif intent == "data_sources":
+            summary = "Рекомендация рассчитана из профиля, требований целевой роли и каталога активностей."
+            reason = "Учитываются текущие уровни навыков, история прохождения, prerequisites, формат и длительность активности."
+            effect = "Прогноз показывает изменение разрыва после заявленных приростов навыков активности."
+            next_step = "Откройте расчёт рекомендации и проверьте исходные уровни и баллы."
+            evidence.extend(skill["skill_id"] for skill in selected["matched_skill_gains"])
+        elif intent == "disagree":
+            summary = "Рекомендацию можно обсудить с руководителем или HR."
+            reason = "Расчёт зависит от уровней навыков, карьерной цели и описаний активностей в датасете."
+            effect = "После исправления исходных данных при следующей загрузке расчёт изменится; отзыв в демо не сохраняется."
+            next_step = "Проверьте навык и цель в профиле, затем передайте конкретное расхождение HR."
+        elif intent == "blockers":
             summary = f"Главный барьер: {first['name']} — разрыв {first['gap']} по шкале навыка." if first else "Разрыв невелик."
             reason = f"Всего открыто {len(open_skills)} навыков; критичный разрыв — {gap['critical_gap_points']} балл."
         elif intent == "first_skill":

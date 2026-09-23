@@ -70,8 +70,8 @@ function EntryScreen({ employees, loading, error, onRetry, onEnter }: {
   employees: EmployeeSummary[]; loading: boolean; error: string | null;
   onRetry: () => void; onEnter: (employeeId: string, view: View) => void;
 }) {
-  const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState('');
+  const [query, setQuery] = useState('E0100');
+  const [selectedId, setSelectedId] = useState('E0100');
   const [view, setView] = useState<View>('employee');
   const filtered = useMemo(() => employees.filter((item) =>
     `${item.full_name} ${item.role} ${item.department} ${item.employee_id}`.toLocaleLowerCase('ru')
@@ -317,11 +317,14 @@ function NavigatorPanel({ employeeId, onClose }: { employeeId: string; onClose: 
    const [error, setError] = useState<string | null>(null);
    const prompts: { label: string; intent: NavigatorIntent }[] = [
      { label: 'Почему мне подходит первый курс?', intent: 'why_course' },
+     { label: 'Почему первая активность лучше второй?', intent: 'compare' },
      { label: 'Что мешает перейти к цели?', intent: 'blockers' },
      { label: 'Какой навык освоить первым?', intent: 'first_skill' },
      { label: 'Что изменится после активности?', intent: 'after_activity' },
      { label: 'Как ускорить маршрут?', intent: 'faster_route' },
      { label: 'У меня 4 часа в неделю', intent: 'four_hours' },
+     { label: 'Какие данные использовались?', intent: 'data_sources' },
+     { label: 'Что делать, если я не согласен?', intent: 'disagree' },
    ];
    const ask = async (value: string, intent?: NavigatorIntent) => {
      if (!value.trim() || busy) return;
@@ -361,7 +364,11 @@ function App() {
 
   const loadEmployees = useCallback(async () => {
     setEmployeeListLoading(true); setEmployeeListError(null);
-    try { setEmployees((await api.employees()).employees); }
+    try {
+      const result = await api.employees();
+      if (!Array.isArray(result?.employees)) throw new Error('API вернул неполный список сотрудников.');
+      setEmployees(result.employees);
+    }
     catch (error) { setEmployeeListError(getErrorMessage(error)); }
     finally { setEmployeeListLoading(false); }
   }, []);
@@ -375,6 +382,10 @@ function App() {
       const [profile, gap, recommendations, roadmap] = await Promise.all([
         api.profile(id), api.skillGap(id), api.recommendations(id), api.roadmap(id),
       ]);
+      if (!profile?.employee || !gap || !Array.isArray(gap.skills) ||
+          !Array.isArray(recommendations?.recommendations) || !Array.isArray(roadmap?.steps)) {
+        throw new Error('API вернул неполные данные профиля. Повторите загрузку.');
+      }
       if (requestId === dashboardRequest.current && activeEmployeeId.current === id) {
         setData({ profile, gap, recommendations: recommendations.recommendations, roadmap });
       }

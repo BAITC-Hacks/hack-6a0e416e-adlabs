@@ -56,11 +56,11 @@ The default `AI_PROVIDER=template` answers AI Navigator questions deterministica
 
 ## Demo path
 
-1. Select employee `E0001` and enter Employee mode. The overview shows the target, readiness, key gap, first activity, and first roadmap step.
+1. Employee `E0100` (Maria Ivanova) is preselected for the demo; clear the search to choose someone else. Enter Employee mode. The Product Manager Junior → Middle overview starts at 71.9% readiness and shows the key gap and first activity.
 2. Open **Activities**, then **Подробнее и начать** on a recommendation. Review the dataset description, prerequisites, schedule, skill gains, forecast, and optional LMS link. Use **Записаться → Начать → Отметить выполненным**. The refreshed readiness, recommendations, roadmap, and activity history appear immediately. These status changes and skill gains live only in API memory. The repeatable `EV_036` can be enrolled again after completion.
 3. Open **Roadmap** for up to three sequential steps and the full target skill map. Open **AI Navigator** for suggested questions or type your own. Answers include facts, reason, expected effect, limitation, next step, and source IDs.
 4. Switch to HR overview from the sidebar for aggregate progress. To restore the initial demo state, restart the API.
 
-Backend checks: `.\.venv\Scripts\python.exe -m pytest backend/tests tests -q --basetemp .pytest_local`. Frontend checks: `npm --prefix frontend run typecheck` and `npm --prefix frontend run build`.
+Backend checks: `.\.venv\Scripts\python.exe -m pytest backend/tests tests -q --basetemp .pytest_local`. Golden-path smoke: `.\.venv\Scripts\python.exe scripts\demo_smoke_test.py` (isolated in-process API; E0100 goes from 71.9% to 81.2% on EV_026). Frontend checks: `npm --prefix frontend run typecheck` and `npm --prefix frontend run build`.
 
-MVP behavior, final gaps, and API contracts are documented in [docs/MVP_SPEC.md](docs/MVP_SPEC.md), [docs/FINAL_GAP_ANALYSIS.md](docs/FINAL_GAP_ANALYSIS.md), and [contracts/api.md](contracts/api.md). Simulated activity actions are held in server memory and reset when the API restarts.
+MVP behavior, final gaps, and API contracts are documented in [docs/MVP_SPEC.md](docs/MVP_SPEC.md), [docs/FINAL_GAP_ANALYSIS.md](docs/FINAL_GAP_ANALYSIS.md), and [contracts/api.md](contracts/api.md). For the defense use [demo script](docs/DEMO_SCRIPT.md), [jury Q&A](docs/JURY_QA.md), [scorecard](docs/JURY_SCORECARD.md), and [final checklist](docs/FINAL_CHECKLIST.md). Simulated activity actions are held in server memory and reset when the API restarts.
