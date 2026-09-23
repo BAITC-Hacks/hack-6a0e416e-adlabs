@@ -53,3 +53,24 @@ def test_imported_active_disappears_after_completion(client):
     snap = career_snapshot(employee)
     assert snap["active_quests"] == []
     assert snap["completed_quests"][0]["event_id"] == "EV2"
+
+
+@pytest.mark.django_db
+@override_settings(DEMO_MODE=True, ALLOWED_HOSTS=["testserver"])
+def test_full_prerequisite_chain_awards_bonus_once(client):
+    RoleProfile.objects.create(role="Engineer", grade="Middle", required_skills={"A": 1, "B": 1})
+    employee = Employee.objects.create(external_id="E3", full_name="Test", role="Engineer", grade="Junior",
+        last_review_date=date.today()-timedelta(days=2), baseline_skills={},
+        career_goal={"target_role": "Engineer", "target_grade": "Middle"})
+    LearningEvent.objects.create(external_id="BASE", title="Base", develops_skills=[
+        {"skill_id": "A", "gain": 1, "max_level": 5}])
+    LearningEvent.objects.create(external_id="TARGET", title="Target", develops_skills=[
+        {"skill_id": "B", "gain": 1, "max_level": 5}], prerequisites={"A": 1})
+    data = json.dumps({"employee_id": "E3"})
+    for event_id in ("BASE", "TARGET"):
+        assert client.post(f"/api/v1/quests/{event_id}/start/", data, content_type="application/json").status_code == 200
+        response = client.post(f"/api/v1/quests/{event_id}/complete/", data, content_type="application/json")
+        assert response.status_code == 200
+    assert response.json()["xp_awarded"] == 500
+    assert "QUEST_MASTER" in career_snapshot(employee)["achievements"]
+    assert employee.xp_transactions.count() == 2

@@ -158,7 +158,7 @@ def career_snapshot(employee):
         achievements.append("CRITICAL_UPGRADE")
     if readiness is not None and readiness - baseline_readiness >= 20:
         achievements.append("CAREER_CLIMBER")
-    if any(q.event.prerequisites for q in completed_quests):
+    if employee.xp_transactions.filter(reason="quest_chain_completed").exists():
         achievements.append("QUEST_MASTER")
     if goal and goal["target_role"] != employee.role:
         achievements.append("CROSS_PATH_EXPLORER")

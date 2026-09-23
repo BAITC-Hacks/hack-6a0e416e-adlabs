@@ -9,7 +9,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .models import ActivityHistory, Employee, EmployeeQuest, LearningEvent, RoleProfile, XPTransaction
-from .services import career_snapshot
+from .services import career_snapshot, effective_skills, prerequisite_chain, serialize_event
 
 
 def error(code, message, status=400, details=None):
@@ -137,7 +137,18 @@ def complete_quest(request, event_id):
         critical_ids = {g["skill_id"] for g in before["gaps"] if g["critical"] and g["gap"] > 0}
         bonus = settings.QUEST_XP_CRITICAL_BONUS if any(
             g["skill_id"] in critical_ids for g in event.develops_skills) else 0
-        xp = settings.QUEST_XP_BASE + bonus
+        imported = [
+            {"id": a.external_id, "date": a.date, "status": a.status,
+             "develops_skills": a.event.develops_skills}
+            for a in ActivityHistory.objects.filter(employee=employee).select_related("event")
+            if not a.external_id.startswith("DEMO-")
+        ]
+        initial_levels = effective_skills(employee.baseline_skills, employee.last_review_date, imported)
+        chain = prerequisite_chain(serialize_event(event),
+                                   [serialize_event(e) for e in LearningEvent.objects.all()], initial_levels)
+        prior_completed = set(employee.quests.filter(state="completed").values_list("event__external_id", flat=True))
+        chain_completed = len(chain) > 1 and set(chain[:-1]) <= prior_completed
+        xp = settings.QUEST_XP_BASE + bonus + (settings.QUEST_XP_CHAIN_BONUS if chain_completed else 0)
         quest.state = "completed"
         quest.completed_at = timezone.now()
         quest.xp_awarded = xp
@@ -146,7 +157,8 @@ def complete_quest(request, event_id):
                                        event=event, date=max(date.today(), employee.last_review_date + timedelta(days=1)),
                                        status="completed",
                                        completion_pct=100, metadata={"demo": True})
-        XPTransaction.objects.create(employee=employee, quest=quest, amount=xp, reason="quest_completed")
+        XPTransaction.objects.create(employee=employee, quest=quest, amount=xp,
+                                     reason="quest_chain_completed" if chain_completed else "quest_completed")
         after = career_snapshot(employee)
     changed = [{"skill_id": sid, "before": value, "after": after["effective_skills"].get(sid, 0)}
                for sid, value in before["effective_skills"].items()
