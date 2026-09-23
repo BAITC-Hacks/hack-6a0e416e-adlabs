@@ -1,7 +1,7 @@
 import type {
-  CompletionResponse, EmployeeListResponse, EmployeeProfileResponse,
+  ActivityActionResponse, ActivityDetailsResponse, ActivityHistoryResponse, CompletionResponse, EmployeeListResponse, EmployeeProfileResponse,
   HROverviewResponse, RecommendationsResponse, RoadmapResponse, SkillGapResponse,
-  ErrorResponse,
+  ErrorResponse, NavigatorIntent, NavigatorResponse,
 } from './types';
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
@@ -43,6 +43,15 @@ export const api = {
   skillGap: (id: string) => request<SkillGapResponse>(`${employeePath(id)}/skill-gap`),
   recommendations: (id: string) => request<RecommendationsResponse>(`${employeePath(id)}/recommendations`),
   roadmap: (id: string) => request<RoadmapResponse>(`${employeePath(id)}/roadmap`),
+  activity: (id: string, eventId: string) => request<ActivityDetailsResponse>(`${employeePath(id)}/activities/${encodeURIComponent(eventId)}`),
+  activityHistory: (id: string) => request<ActivityHistoryResponse>(`${employeePath(id)}/activity-history`),
+  activityAction: (id: string, eventId: string, action: 'enroll' | 'start') => request<ActivityActionResponse>(
+    `${employeePath(id)}/activities/${encodeURIComponent(eventId)}/actions/${action}`, { method: 'POST' },
+  ),
+  askNavigator: (id: string, question: string, intent?: NavigatorIntent, eventId?: string) => request<NavigatorResponse>(
+    `${employeePath(id)}/navigator/ask`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, intent, event_id: eventId }) },
+  ),
   complete: (id: string, eventId: string) => request<CompletionResponse>(
     `${employeePath(id)}/activities/${encodeURIComponent(eventId)}/complete`,
     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' },

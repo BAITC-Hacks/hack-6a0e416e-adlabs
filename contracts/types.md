@@ -78,10 +78,42 @@ type AppliedSkillGain = {
   skill_id: string; before_level: number; after_level: number; gain: number;
 };
 type CompletionResponse = {
-  employee_id: string; event_id: string;
+  employee_id: string; event_id: string; activity_status: "completed";
   applied_skill_gains: AppliedSkillGain[];
   skill_gap: SkillGapResponse; recommendations: Recommendation[];
   roadmap: RoadmapResponse;
+};
+type ActivitySkill = {
+  skill_id: string; name: string; current_level: number;
+  required_level?: number | null; gain?: number | null;
+  max_level?: number | null; met?: boolean | null;
+};
+type ActivityDetailsResponse = {
+  employee_id: string; event_id: string; title: string; description: string;
+  type: string; format: "online" | "offline" | "self_paced"; duration_hours: number;
+  upcoming_sessions: string[]; next_session_date: string | null;
+  prerequisites: ActivitySkill[]; develops_skills: ActivitySkill[];
+  external_url: string | null; provider_url: string | null;
+  status: "not_started" | "enrolled" | "in_progress" | "completed";
+  eligible: boolean; recommendation: Recommendation | null;
+};
+type ActivityActionResponse = {
+  employee_id: string; event_id: string; status: "enrolled" | "in_progress";
+};
+type ActivityHistoryItem = {
+  record_id: string | null; event_id: string; title: string; date: string | null;
+  status: string; source: "dataset" | "demo";
+};
+type ActivityHistoryResponse = { employee_id: string; activities: ActivityHistoryItem[] };
+type NavigatorRequest = {
+  question: string; intent?: "why_course" | "blockers" | "first_skill" |
+    "after_activity" | "faster_route" | "four_hours" | "general";
+  event_id?: string; weekly_hours?: number;
+};
+type NavigatorResponse = {
+  employee_id: string; provider: "template" | "openai" | "nvidia"; intent: string;
+  summary: string; profile_facts: string[]; reason: string; expected_effect: string;
+  limitation: string; next_step: string; evidence_ids: string[];
 };
 
 type DepartmentSummary = {

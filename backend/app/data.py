@@ -6,6 +6,7 @@ import os
 from datetime import date
 from pathlib import Path
 from threading import RLock
+from urllib.parse import urlparse
 
 from .models import EmployeeProfile
 
@@ -132,6 +133,11 @@ def load_dataset(data_dir: Path | None = None) -> "Dataset":
         _require(isinstance(sessions, list), f"Invalid sessions for {event_id}")
         for value in sessions:
             _date(value, f"{event_id}.upcoming_sessions")
+        for field in ("external_url", "provider_url"):
+            url = event.get(field)
+            if url is not None:
+                parsed = urlparse(url) if isinstance(url, str) else None
+                _require(parsed is not None and parsed.scheme in {"http", "https"} and bool(parsed.netloc), f"Invalid {field} for {event_id}")
 
     for row in history:
         record_id = row["record_id"]
@@ -159,7 +165,20 @@ class Dataset:
         self.history = history
         self.effective_skills = {employee_id: dict(employee["skills"]) for employee_id, employee in employees.items()}
         self.session_completions: dict[str, set[str]] = {employee_id: set() for employee_id in employees}
+        self.activity_statuses: dict[str, dict[str, str]] = {employee_id: {} for employee_id in employees}
         self.lock = RLock()
 
     def history_for(self, employee_id: str) -> list[dict]:
         return [row for row in self.history if row["employee_id"] == employee_id]
+
+    def activity_status(self, employee_id: str, event_id: str) -> str:
+        if event_id in self.session_completions[employee_id]:
+            return "completed"
+        if event_id in self.activity_statuses[employee_id]:
+            return self.activity_statuses[employee_id][event_id]
+        history = [row for row in self.history_for(employee_id) if row["event_id"] == event_id]
+        if any(row["status"] == "completed" for row in history):
+            return "completed"
+        if any(row["status"] == "in_progress" for row in history):
+            return "in_progress"
+        return "not_started"

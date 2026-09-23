@@ -72,3 +72,32 @@ A  tests/test_engine.py
 ```text
 M  team-logs/adil.md
 ```
+
+## 2026-09-23 16:44:15 +0500
+
+- member: adil
+- role: architect
+- branch: adil/integration-mvp
+- summary: final Career Quest audit and demo flow; integrated frontend/backend/docs require cross-area override
+
+```text
+M  .env.example
+M  .gitignore
+M  README.md
+M  backend/app/data.py
+M  backend/app/main.py
+M  backend/app/models.py
+M  backend/app/services/ai_provider.py
+M  backend/app/services/navigator.py
+M  backend/tests/test_api.py
+M  contracts/api.md
+M  contracts/types.md
+A  docs/FINAL_GAP_ANALYSIS.md
+M  docs/MVP_SPEC.md
+M  frontend/src/App.tsx
+M  frontend/src/api.ts
+A  frontend/src/audit.css
+M  frontend/src/main.tsx
+M  frontend/src/types.ts
+M  frontend/vite.config.ts
+```

@@ -144,6 +144,7 @@ class AppliedSkillGain(BaseModel):
 class CompletionResponse(BaseModel):
     employee_id: str
     event_id: str
+    activity_status: Literal["completed"] = "completed"
     applied_skill_gains: list[AppliedSkillGain]
     skill_gap: SkillGapResponse
     recommendations: list[Recommendation]
@@ -189,3 +190,72 @@ class ErrorDetail(BaseModel):
 
 class ErrorResponse(BaseModel):
     error: ErrorDetail
+
+
+class ActivitySkill(BaseModel):
+    skill_id: str
+    name: str
+    current_level: int
+    required_level: int | None = None
+    gain: int | None = None
+    max_level: int | None = None
+    met: bool | None = None
+
+
+class ActivityDetailsResponse(BaseModel):
+    employee_id: str
+    event_id: str
+    title: str
+    description: str
+    type: str
+    format: Literal["online", "offline", "self_paced"]
+    duration_hours: float
+    upcoming_sessions: list[str]
+    next_session_date: str | None
+    prerequisites: list[ActivitySkill]
+    develops_skills: list[ActivitySkill]
+    external_url: str | None
+    provider_url: str | None
+    status: Literal["not_started", "enrolled", "in_progress", "completed"]
+    eligible: bool
+    recommendation: Recommendation | None
+
+
+class ActivityActionResponse(BaseModel):
+    employee_id: str
+    event_id: str
+    status: Literal["enrolled", "in_progress"]
+
+
+class ActivityHistoryItem(BaseModel):
+    record_id: str | None
+    event_id: str
+    title: str
+    date: str | None
+    status: str
+    source: Literal["dataset", "demo"]
+
+
+class ActivityHistoryResponse(BaseModel):
+    employee_id: str
+    activities: list[ActivityHistoryItem]
+
+
+class NavigatorRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+    intent: Literal["why_course", "blockers", "first_skill", "after_activity", "faster_route", "four_hours", "general"] | None = None
+    event_id: str | None = None
+    weekly_hours: float | None = Field(default=None, gt=0, le=80)
+
+
+class NavigatorResponse(BaseModel):
+    employee_id: str
+    provider: Literal["template", "openai", "nvidia"]
+    intent: str
+    summary: str
+    profile_facts: list[str]
+    reason: str
+    expected_effect: str
+    limitation: str
+    next_step: str
+    evidence_ids: list[str]

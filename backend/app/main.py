@@ -11,12 +11,13 @@ from ml import engine
 
 from .data import Dataset, DatasetError, GRADES, load_dataset
 from .models import (
-    CompletionResponse, EmployeeListResponse, EmployeeProfileResponse, ErrorResponse,
+    ActivityActionResponse, ActivityDetailsResponse, ActivityHistoryResponse, CompletionResponse, EmployeeListResponse, EmployeeProfileResponse, ErrorResponse,
     HROverviewResponse, HealthResponse, RecommendationsResponse, RoadmapResponse, SkillGapResponse,
+    NavigatorRequest, NavigatorResponse,
 )
 from .services.ai_provider import get_ai_provider
 from .services.navigator import (
-    build_roadmap, calculate_skill_gap, get_employee_profile, recommend_activities,
+    activity_details, ask_navigator, build_roadmap, calculate_skill_gap, get_employee_profile, recommend_activities,
     simulate_activity_completion,
 )
 
@@ -116,6 +117,74 @@ def roadmap(employee_id: str):
     _employee(data, employee_id)
     with data.lock:
         return build_roadmap(data, employee_id, get_ai_provider())
+
+
+@app.get("/api/employees/{employee_id}/activities/{event_id}", response_model=ActivityDetailsResponse)
+def get_activity(employee_id: str, event_id: str):
+    data = _data()
+    _employee(data, employee_id)
+    if event_id not in data.events:
+        raise APIError(404, "not_found", f"Event {event_id} not found")
+    with data.lock:
+        return activity_details(data, employee_id, event_id, get_ai_provider())
+
+
+@app.get("/api/employees/{employee_id}/activity-history", response_model=ActivityHistoryResponse)
+def activity_history(employee_id: str):
+    data = _data()
+    _employee(data, employee_id)
+    with data.lock:
+        historical = [
+            {"record_id": row["record_id"], "event_id": row["event_id"],
+             "title": data.events[row["event_id"]]["title"], "date": row["date"],
+             "status": row["status"], "source": "dataset"}
+            for row in data.history_for(employee_id)
+        ]
+        historical.sort(key=lambda row: (row["date"], row["record_id"]), reverse=True)
+        demo = [
+            {"record_id": None, "event_id": event_id, "title": data.events[event_id]["title"],
+             "date": None, "status": status, "source": "demo"}
+            for event_id, status in data.activity_statuses[employee_id].items()
+        ]
+        return {"employee_id": employee_id, "activities": demo + historical}
+
+
+@app.post("/api/employees/{employee_id}/activities/{event_id}/actions/{action}", response_model=ActivityActionResponse)
+def activity_action(employee_id: str, event_id: str, action: str):
+    if action not in {"enroll", "start"}:
+        raise APIError(404, "not_found", f"Action {action} not found")
+    data = _data()
+    employee = _employee(data, employee_id)
+    event = data.events.get(event_id)
+    if event is None:
+        raise APIError(404, "not_found", f"Event {event_id} not found")
+    with data.lock:
+        status = data.activity_status(employee_id, event_id)
+        if status == "completed" and event_id != engine.REPEATABLE_EVENT_ID:
+            raise APIError(409, "already_completed", f"Event {event_id} was already completed")
+        target = engine.resolve_target(employee, data.role_profiles)
+        if not engine.event_is_eligible(event, employee, data.effective_skills[employee_id], target,
+                                        data.history_for(employee_id), data.as_of_date,
+                                        completed_event_ids=data.session_completions[employee_id]):
+            raise APIError(422, "invalid_activity", f"Event {event_id} is not eligible for {employee_id}")
+        if action == "start" and status in {"not_started", "completed"}:
+            raise APIError(409, "enrollment_required", "Enroll before starting the activity")
+        new_status = "enrolled" if action == "enroll" and status in {"not_started", "completed"} else "in_progress" if action == "start" else status
+        data.activity_statuses[employee_id][event_id] = new_status
+        return {"employee_id": employee_id, "event_id": event_id, "status": new_status}
+
+
+@app.post("/api/employees/{employee_id}/navigator/ask", response_model=NavigatorResponse)
+def navigator_ask(employee_id: str, body: NavigatorRequest):
+    data = _data()
+    _employee(data, employee_id)
+    if body.event_id and body.event_id not in data.events:
+        raise APIError(404, "not_found", f"Event {body.event_id} not found")
+    provider = get_ai_provider()
+    with data.lock:
+        answer = ask_navigator(data, employee_id, body.question, body.intent, body.event_id,
+                               body.weekly_hours, provider)
+    return provider.rephrase(answer, body.question)
 
 
 @app.post(
