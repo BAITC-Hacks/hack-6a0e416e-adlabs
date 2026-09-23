@@ -1,70 +1,115 @@
-# hack-6a0e416e-adlabs
-Hackathon team repository for ADLabs
+# Career Quest
 
-## Team workflow
+**Career Quest** — демо-сервис для сотрудников и HR, который помогает выбрать следующий шаг профессионального развития. Сотрудник видит требования целевой роли и грейда, разрыв между ними и своими навыками, подходящие обучающие активности и прогноз их влияния на прогресс. HR видит сводные показатели по сотрудникам и подразделениям.
 
-- Team rules: `AGENTS.md`
-- Workflow: `TEAM_WORKFLOW.md`
-- Prompt library: `PROMPTS.md`
-- Subagent playbook: `SUBAGENTS.md`
-- Friend setup: `FRIEND_SETUP.md`
-- Multi-repo strategy: `MULTI_REPO_STRATEGY.md`
-- Hourly commit helper: `scripts/team-commit`
-- Task router: `scripts/route-task`
+Проект решает проблему непрозрачного выбора обучения: вместо общего каталога мероприятий показывает, какие активности закрывают конкретные пробелы в навыках. Текущая версия — MVP на синтетических данных для демонстрации на хакатоне.
 
-## Repository role
+## Что реализовано
 
-This repository contains the Career Quest MVP in one monorepo: `frontend/` (React, TypeScript, Vite), `backend/` (FastAPI), `ml/` (deterministic recommendation engine), `datasets/`, and the shared `contracts/`. `MULTI_REPO_STRATEGY.md` describes an earlier team strategy; this MVP runs from this repository.
+- Демо-вход без регистрации: выбор сотрудника из датасета и режима «Сотрудник» или «HR».
+- Карьерная цель: явно заданная цель сотрудника либо следующий грейд в текущей роли. Для Lead без цели система сообщает, что цель не определена.
+- Карта навыков: текущий и требуемый уровни, критичные навыки, разрыв и процент соответствия целевому профилю.
+- До трёх рекомендаций с объяснением, составом оценки и прогнозом изменения прогресса. Учитываются релевантность цели, закрываемые пробелы, история завершения и длительность активности.
+- Roadmap из максимум трёх последовательных шагов с пересчётом прогноза после каждого шага.
+- Карточка активности с описанием, условиями участия, расписанием и ожидаемым эффектом; демо-действия «Записаться», «Начать» и «Отметить выполненным». После завершения пересчитываются навыки, рекомендации и маршрут.
+- История активностей из датасета и текущей демо-сессии.
+- AI Navigator: ответы на вопросы о цели, барьерах, рекомендациях и маршруте с указанием идентификаторов использованных данных. Без API-ключей работает шаблонное объяснение.
+- HR-обзор с агрегированными показателями по грейдам и подразделениям.
 
-## Quick route
+## Как работает решение
 
-Before spending model tokens on a large task, run:
+1. Пользователь выбирает сотрудника. API загружает его профиль, оценённые навыки, карьерную цель и историю активностей из файлов датасета.
+2. Расчётный модуль сопоставляет навыки с требованиями целевого профиля. Для каждой подходящей добровольной активности он оценивает закрытие пробелов и другие факторы, затем сортирует кандидатов и возвращает до трёх рекомендаций.
+3. Интерфейс показывает разрыв, объяснение оценки, прогноз эффекта и маршрут. AI Navigator объясняет уже рассчитанные данные; языковая модель, если настроена, не выбирает активности и не меняет их порядок.
+4. Демо-завершение активности повышает эффективные уровни навыков в памяти API в пределах ограничений датасета. API сразу пересчитывает прогресс, рекомендации и roadmap. Это симуляция, а не подтверждение прохождения обучения.
 
-```bash
-./scripts/route-task "build login page"
+## Технологии
+
+| Часть | Используется |
+| --- | --- |
+| Интерфейс | React 18, TypeScript, Vite 6, `lucide-react` |
+| API | Python, FastAPI, Pydantic, Uvicorn |
+| Расчёты | Python-модуль `ml/engine.py`: детерминированный skill gap, ранжирование, прогноз и roadmap |
+| AI Navigator | Локальный `TemplateAIProvider`; опциональные адаптеры OpenAI и NVIDIA NIM через OpenAI-совместимый API |
+| Данные | JSON и CSV из `datasets/career_quest/` |
+| Проверки | Pytest, TypeScript typecheck и сборка Vite |
+
+Модели OpenAI и NVIDIA задаются переменными окружения (`OPENAI_MODEL`, `NVIDIA_MODEL`). Настроенный по умолчанию `AI_PROVIDER=template` не требует ключа и не делает внешний AI-запрос. [OpenAI проверен живыми вызовами](docs/AI_INTEGRATION.md) при наличии локального ключа; адаптер NVIDIA протестирован с подменёнными HTTP-ответами, но без реального ключа не проверен.
+
+## Архитектура
+
+```text
+frontend/ (React) ── HTTP /api ──> backend/app/main.py (FastAPI)
+                                      ├── backend/app/data.py ──> datasets/career_quest/ (JSON, CSV)
+                                      ├── ml/engine.py (разрыв, рекомендации, roadmap)
+                                      └── backend/app/services/ (Navigator и AI-провайдеры)
 ```
 
-It returns the suggested agent, model tier, target repo, and next prompt.
+`frontend/src/api.ts` вызывает API. В локальном режиме Vite перенаправляет запросы `/api` на `127.0.0.1:8000`. API проверяет и загружает данные, хранит изменения демо-сессии в памяти и передаёт расчёты модулю `ml/engine.py`. Структуры запросов и ответов описаны в [`contracts/api.md`](contracts/api.md).
 
-## Career Quest MVP: local run on Windows
+## Установка и запуск
 
-Use PowerShell in the repository root (the folder containing this README). Python 3.11 or newer and Node.js 20.19 or newer are required. The local setup was checked with Python 3.14.0, Node.js 24.12.0, and npm 11.12.0. No Docker is needed.
+Нужны **Python 3.11+**, **Node.js 20.19+** и npm. Команды ниже рассчитаны на PowerShell; выполняйте их из корня репозитория.
 
-First-time setup (skip the virtual environment creation if `.venv` already exists):
+1. Клонируйте проект и установите зависимости:
+
+   ```powershell
+   git clone https://github.com/BAITC-Hacks/hack-6a0e416e-adlabs.git
+   cd hack-6a0e416e-adlabs
+   py -3 -m venv .venv
+   .\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+   npm --prefix frontend install
+   ```
+
+2. Запустите API в первом окне PowerShell:
+
+   ```powershell
+   .\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
+   ```
+
+3. Запустите интерфейс во втором окне из корня репозитория:
+
+   ```powershell
+   npm --prefix frontend run dev
+   ```
+
+4. Откройте [http://localhost:5173](http://localhost:5173). Проверка API: [http://localhost:8000/api/health](http://localhost:8000/api/health), интерактивная документация: [http://localhost:8000/docs](http://localhost:8000/docs).
+
+Для базового сценария файл `.env` не нужен. Чтобы настроить внешних AI-провайдеров, скопируйте `.env.example` в `.env` в корне проекта, укажите ключи и `AI_PROVIDER`, затем перезапустите API. Не добавляйте `.env` в Git.
+
+## Как проверить решение
+
+1. Откройте интерфейс. В поиске заранее выбран `E0100` (Maria Ivanova). Оставьте режим «Сотрудник» и нажмите «Войти».
+2. Проверьте цель **Product Manager Junior → Middle**, исходную готовность **71,9%**, карту навыков и рекомендации.
+3. Откройте «Активности», раскройте «Почему эта рекомендация?» и карточку первой рекомендации `EV_026`. Посмотрите условия и прогноз влияния.
+4. Нажмите «Записаться» → «Начать» → «Отметить выполненным». В исходном состоянии демо готовность должна измениться до **81,2%**; обновятся рекомендации и история. Для повторения сценария перезапустите API.
+5. Откройте Roadmap и задайте AI Navigator вопрос «Почему эта активность лучше второй?». Затем переключитесь в «HR-обзор».
+
+Автоматическая проверка из корня репозитория:
 
 ```powershell
-py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
-npm --prefix frontend install
+.\.venv\Scripts\python.exe -m pytest backend/tests tests -q --basetemp .pytest_local
+.\.venv\Scripts\python.exe scripts\demo_smoke_test.py
+npm --prefix frontend run typecheck
+npm --prefix frontend run build
 ```
 
-Start the API in one PowerShell window from the repository root:
+Smoke test запускает отдельный API внутри тестового процесса и проверяет путь `E0100`: **71,9% → 81,2%** после `EV_026`.
 
-```powershell
-.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
-```
+## Данные и интеграции
 
-Start the web client in another PowerShell window from the same root:
+В репозитории находится [синтетический датасет](datasets/career_quest/README.ru.md): 200 сотрудников, 60 навыков, 32 профиля ролей и грейдов, 40 активностей и 2 743 записи истории. Дата среза, указанная в данных, — `2026-10-01`; расчёт доступных сессий опирается на неё. Люди и компании в наборе вымышлены.
 
-```powershell
-npm --prefix frontend run dev
-```
+API читает локальные JSON/CSV-файлы. Внешние AI-сервисы подключаются только при настройке ключей. Датасет допускает ссылки на внешнего провайдера обучения, но в текущих активностях подтверждённых ссылок LMS нет; реальной записи в LMS проект не выполняет.
 
-Open `http://localhost:5173`. Check the API at `http://localhost:8000/api/health`; interactive API docs are at `http://localhost:8000/docs`. Vite forwards browser requests under `/api` to the local API, so no frontend URL setting is needed for this setup. Stop each process with Ctrl+C.
+## Ограничения текущей версии
 
-The default `AI_PROVIDER=template` answers AI Navigator questions deterministically from the profile, skill gap, recommendations, and roadmap. No API key is needed. To enable the verified OpenAI path, copy `.env.example` to the ignored root `.env`, set `OPENAI_API_KEY` locally, `AI_PROVIDER=openai`, and `AI_FALLBACK_PROVIDER=template`. The backend loads `.env` at startup; process environment takes precedence. `NVIDIA_BASE_URL`, `NVIDIA_MODEL`, and `OPENAI_MODEL` are configurable. Restart the backend after changing `.env`.
+- Регистрации, авторизации и постоянного хранилища нет. Демо-статусы и изменённые навыки общие для клиентов одного API-процесса и сбрасываются при его перезапуске.
+- Завершение активности и прирост навыков моделируются по правилам датасета; сервис не проверяет фактическое обучение и не гарантирует повышение.
+- Данные синтетические. HR-обзор и рекомендации показывают результат на этом наборе, без подключения к кадровой системе или LMS.
+- Для OpenAI есть локальная проверка живых запросов, но на другой машине потребуется собственный ключ. NVIDIA NIM не проверен с реальным ключом; фактическую корректность ответов внешней модели нужно оценивать вручную.
 
-The recommendation engine computes skill gaps, ranking, top-3, score breakdown, projected impact, and roadmap. The external model only explains this evidence packet. Provider output must pass a Pydantic JSON schema and checks for unknown IDs and unsupported numbers; invalid responses fall through to the next provider. `GET /api/ai/status` exposes safe configuration flags and the provider that answered the most recent Navigator request, with no secrets. The Navigator badge shows NVIDIA NIM or OpenAI only after a valid real response; otherwise it says Offline explanation. Activity completion is a demo simulation stored in API memory; full training remains in an external corporate LMS.
+## Развёрнутая версия
 
-Check the selected provider with `.\.venv\Scripts\python.exe scripts\check_ai_providers.py`, then run five cases with `.\.venv\Scripts\python.exe scripts\eval_ai_providers.py`. Unselected providers are skipped; a selected provider without a key causes a nonzero exit. OpenAI passed live checks and a backend Navigator request on 23 September 2026. NVIDIA remains unverified without a key. See [AI integration status](docs/AI_INTEGRATION.md).
+Подтверждённой ссылки на опубликованную версию в репозитории нет. Решение можно запустить локально по инструкции выше.
 
-## Demo path
-
-1. Employee `E0100` (Maria Ivanova) is preselected for the demo; clear the search to choose someone else. Enter Employee mode. The Product Manager Junior → Middle overview starts at 71.9% readiness and shows the key gap and first activity.
-2. Open **Activities**, then **Подробнее и начать** on a recommendation. Review the dataset description, prerequisites, schedule, skill gains, forecast, and optional LMS link. Use **Записаться → Начать → Отметить выполненным**. The refreshed readiness, recommendations, roadmap, and activity history appear immediately. These status changes and skill gains live only in API memory. The repeatable `EV_036` can be enrolled again after completion.
-3. Open **Roadmap** for up to three sequential steps and the full target skill map. Open **AI Navigator** for suggested questions or type your own. Answers include facts, reason, expected effect, limitation, next step, and source IDs.
-4. Switch to HR overview from the sidebar for aggregate progress. To restore the initial demo state, restart the API.
-
-Backend checks: `.\.venv\Scripts\python.exe -m pytest backend/tests tests -q --basetemp .pytest_local`. Golden-path smoke: `.\.venv\Scripts\python.exe scripts\demo_smoke_test.py` (isolated in-process API; E0100 goes from 71.9% to 81.2% on EV_026). Frontend checks: `npm --prefix frontend run typecheck` and `npm --prefix frontend run build`.
-
-MVP behavior, final gaps, and API contracts are documented in [docs/MVP_SPEC.md](docs/MVP_SPEC.md), [docs/FINAL_GAP_ANALYSIS.md](docs/FINAL_GAP_ANALYSIS.md), and [contracts/api.md](contracts/api.md). For the defense use [demo script](docs/DEMO_SCRIPT.md), [jury Q&A](docs/JURY_QA.md), [scorecard](docs/JURY_SCORECARD.md), and [final checklist](docs/FINAL_CHECKLIST.md). Simulated activity actions are held in server memory and reset when the API restarts.
