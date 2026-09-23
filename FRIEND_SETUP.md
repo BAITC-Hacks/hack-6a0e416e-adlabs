@@ -43,7 +43,21 @@ Use one of these roles:
 
 ## 4. Use subagents
 
-Before a big request, send this to Codex:
+Before a big request, run the local router:
+
+```bash
+./scripts/route-task "describe your task"
+```
+
+It does not call any AI model, so it costs zero tokens. It returns:
+
+- owner agent;
+- model tier;
+- target repo;
+- whether reviewer is needed;
+- the next prompt to send to Codex.
+
+If the result is unclear, send this to Codex:
 
 ```text
 Read AGENTS.md, TEAM_WORKFLOW.md, PROMPTS.md, SUBAGENTS.md, and MULTI_REPO_STRATEGY.md.
@@ -90,4 +104,3 @@ git push -u origin HEAD
 - Use `strongest` for architecture, hard bugs, security, and final review.
 - Do not paste huge files into prompts; ask Codex to inspect paths locally.
 - Keep stable rules in this repo so every teammate reuses the same context.
-

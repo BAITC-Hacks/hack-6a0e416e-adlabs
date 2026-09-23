@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+request="${*:-}"
+
+if [[ -z "$request" ]]; then
+  echo "Usage: ./scripts/route-task \"describe the task\"" >&2
+  exit 1
+fi
+
+lower_request="$(printf '%s' "$request" | tr '[:upper:]' '[:lower:]')"
+
+contains_any() {
+  local text="$1"
+  shift
+
+  local pattern
+  for pattern in "$@"; do
+    if [[ "$text" == *"$pattern"* ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+task_type="mixed"
+owner_agent="triage"
+model_tier="balanced"
+repo="control"
+needs_review="yes"
+reason="Default route for mixed or unclear work."
+
+if contains_any "$lower_request" \
+  "архитект" "architecture" "schema" "схема" "контракт" "contract" \
+  "database design" "system design" "решение" "структура"; then
+  task_type="architecture"
+  owner_agent="architect"
+  model_tier="strongest"
+  repo="control"
+  needs_review="yes"
+  reason="Architecture and contracts affect multiple repos."
+elif contains_any "$lower_request" \
+  "review" "ревью" "проверь" "check" "security" "безопас" "bug" "ошибка" "regression"; then
+  task_type="review"
+  owner_agent="reviewer"
+  model_tier="strongest"
+  repo="current"
+  needs_review="no"
+  reason="Review and security checks need stronger reasoning."
+elif contains_any "$lower_request" \
+  "frontend" "front" "ui" "ux" "page" "component" "button" "modal" "css" \
+  "tailwind" "react" "next" "верст" "страниц" "компонент" "кнопк" "дизайн"; then
+  task_type="frontend"
+  owner_agent="frontend"
+  model_tier="balanced"
+  repo="frontend"
+  needs_review="yes"
+  reason="UI implementation belongs in the frontend repo."
+elif contains_any "$lower_request" \
+  "backend" "api" "server" "database" "db" "auth" "endpoint" "postgres" \
+  "бэк" "бек" "сервер" "база" "авторизац" "эндпоинт"; then
+  task_type="backend"
+  owner_agent="backend"
+  model_tier="balanced"
+  repo="backend"
+  needs_review="yes"
+  reason="API, server, auth, and database work belongs in the backend repo."
+elif contains_any "$lower_request" \
+  "ml" "model" "prompt" "eval" "dataset" "router" "routing" "llm" \
+  "модель" "промпт" "датасет" "роут" "маршрут"; then
+  task_type="ml"
+  owner_agent="ml"
+  model_tier="balanced"
+  repo="ml"
+  needs_review="yes"
+  reason="Model routing, prompts, datasets, and evals belong in the ML repo."
+elif contains_any "$lower_request" \
+  "readme" "docs" "documentation" "pitch" "demo" "presentation" "changelog" \
+  "док" "презентац" "питч" "демо" "опис"; then
+  task_type="docs"
+  owner_agent="docs-pitch"
+  model_tier="cheap"
+  repo="control"
+  needs_review="no"
+  reason="Docs and pitch work can usually use the cheapest model tier."
+elif contains_any "$lower_request" \
+  "git" "commit" "push" "branch" "merge" "rebase" "pull request" "pr" \
+  "коммит" "пуш" "ветк" "мерж"; then
+  task_type="git"
+  owner_agent="git-manager"
+  model_tier="cheap"
+  repo="control"
+  needs_review="no"
+  reason="Git hygiene is deterministic and should stay cheap."
+fi
+
+if contains_any "$lower_request" \
+  "сложно" "complex" "hard" "security" "безопас" "архитект" "architecture" \
+  "final" "финал" "production" "прод"; then
+  model_tier="strongest"
+fi
+
+if contains_any "$lower_request" \
+  "small" "simple" "minor" "copy" "text" "rename" "summary" \
+  "маленьк" "просто" "текст" "переимен" "саммари"; then
+  if [[ "$owner_agent" != "architect" && "$owner_agent" != "reviewer" ]]; then
+    model_tier="cheap"
+  fi
+fi
+
+cat <<EOF
+task_type: $task_type
+owner_agent: $owner_agent
+model_tier: $model_tier
+repo: $repo
+needs_review: $needs_review
+reason: $reason
+
+next_prompt:
+Read AGENTS.md, TEAM_WORKFLOW.md, PROMPTS.md, SUBAGENTS.md, and MULTI_REPO_STRATEGY.md.
+Act as $owner_agent-agent.
+Model tier: $model_tier.
+Target repo: $repo.
+Task: $request
+EOF

@@ -2,6 +2,16 @@
 
 Use this file when you want Codex agents to work in parallel without wasting tokens.
 
+## Zero-token routing
+
+Run the local router before asking a model:
+
+```bash
+./scripts/route-task "describe the task"
+```
+
+Use the returned `next_prompt` for the selected agent.
+
 ## Model tiers
 
 | Tier | Use for | Suggested model |

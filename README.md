@@ -10,6 +10,7 @@ Hackathon team repository for ADLabs
 - Friend setup: `FRIEND_SETUP.md`
 - Multi-repo strategy: `MULTI_REPO_STRATEGY.md`
 - Hourly commit helper: `scripts/team-commit`
+- Task router: `scripts/route-task`
 
 ## Repository role
 
@@ -18,3 +19,13 @@ This repository is the HackAlemAI control center. Implementation should be split
 - `hack-6a0e416e-adlabs-frontend`
 - `hack-6a0e416e-adlabs-backend`
 - `hack-6a0e416e-adlabs-ml`
+
+## Quick route
+
+Before spending model tokens on a large task, run:
+
+```bash
+./scripts/route-task "build login page"
+```
+
+It returns the suggested agent, model tier, target repo, and next prompt.

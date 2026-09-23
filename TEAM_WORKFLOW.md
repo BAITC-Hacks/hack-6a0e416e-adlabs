@@ -12,6 +12,12 @@ Every request goes through a quick triage before spending expensive tokens:
 4. Which files are relevant?
 5. Does the result need review?
 
+For quick zero-token triage, run:
+
+```bash
+./scripts/route-task "describe the task"
+```
+
 ## Recommended account split
 
 | Subscription | Primary role | Use for |

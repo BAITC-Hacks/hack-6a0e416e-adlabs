@@ -10,3 +10,8 @@ Use:
 TEAM_MEMBER=<name> TEAM_ROLE=<role> ./scripts/team-commit "short summary"
 ```
 
+Route tasks before asking Codex:
+
+```bash
+./scripts/route-task "describe the task"
+```
