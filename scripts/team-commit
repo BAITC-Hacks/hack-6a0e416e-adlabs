@@ -1,0 +1,205 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+message="${1:-}"
+
+if [[ -z "$message" ]]; then
+  echo "Usage: TEAM_MEMBER=<name> TEAM_ROLE=<role> ./scripts/team-commit \"short summary\"" >&2
+  exit 1
+fi
+
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Not inside a git repository." >&2
+  exit 1
+fi
+
+raw_member="${TEAM_MEMBER:-}"
+role="${TEAM_ROLE:-}"
+role="$(printf '%s' "$role" | tr '[:upper:]' '[:lower:]')"
+
+if [[ -z "$raw_member" ]]; then
+  raw_member="$(git config user.name || true)"
+  raw_member="${raw_member:-unknown}"
+fi
+
+member="$(printf '%s' "$raw_member" | tr '[:upper:] ' '[:lower:]-' | tr -cd '[:alnum:]_-')"
+
+if [[ -z "$member" || "$member" == "unknown" ]]; then
+  echo "Set TEAM_MEMBER, for example: TEAM_MEMBER=arman TEAM_ROLE=frontend ./scripts/team-commit \"$message\"" >&2
+  exit 1
+fi
+
+case "$role" in
+  architect|frontend|backend|ml|reviewer|docs-pitch|git-manager) ;;
+  "")
+    echo "Set TEAM_ROLE: architect, frontend, backend, ml, reviewer, docs-pitch, or git-manager." >&2
+    exit 1
+    ;;
+  *)
+    echo "Unknown TEAM_ROLE '$role'. Use: architect, frontend, backend, ml, reviewer, docs-pitch, or git-manager." >&2
+    exit 1
+    ;;
+esac
+
+branch="$(git branch --show-current)"
+
+if [[ -z "$branch" ]]; then
+  echo "Detached HEAD. Switch to a personal branch before committing." >&2
+  exit 1
+fi
+
+if [[ "$branch" == "main" || "$branch" == "master" ]]; then
+  echo "You are on $branch. Create a personal branch first:" >&2
+  echo "  git switch -c $member/$role-work" >&2
+  exit 1
+fi
+
+log_file="team-logs/$member.md"
+
+allowed_for_role() {
+  local file="$1"
+
+  if [[ "$file" == "$log_file" ]]; then
+    return 0
+  fi
+
+  case "$role" in
+    frontend)
+      [[ "$file" == frontend/* \
+        || "$file" == app/* \
+        || "$file" == src/app/* \
+        || "$file" == src/components/* \
+        || "$file" == src/pages/* \
+        || "$file" == src/styles/* \
+        || "$file" == public/* \
+        || "$file" == package.json \
+        || "$file" == package-lock.json \
+        || "$file" == pnpm-lock.yaml \
+        || "$file" == yarn.lock \
+        || "$file" == tsconfig.json \
+        || "$file" == vite.config.* \
+        || "$file" == next.config.* \
+        || "$file" == tailwind.config.* \
+        || "$file" == postcss.config.* \
+        || "$file" == eslint.config.* ]]
+      ;;
+    backend)
+      [[ "$file" == backend/* \
+        || "$file" == server/* \
+        || "$file" == api/* \
+        || "$file" == db/* \
+        || "$file" == database/* \
+        || "$file" == migrations/* \
+        || "$file" == src/server/* \
+        || "$file" == package.json \
+        || "$file" == package-lock.json \
+        || "$file" == pnpm-lock.yaml \
+        || "$file" == yarn.lock \
+        || "$file" == pyproject.toml \
+        || "$file" == requirements.txt ]]
+      ;;
+    ml)
+      [[ "$file" == ml/* \
+        || "$file" == prompts/* \
+        || "$file" == evals/* \
+        || "$file" == datasets/* \
+        || "$file" == contracts/model-routing.md \
+        || "$file" == pyproject.toml \
+        || "$file" == requirements.txt \
+        || "$file" == package.json \
+        || "$file" == package-lock.json \
+        || "$file" == pnpm-lock.yaml \
+        || "$file" == yarn.lock ]]
+      ;;
+    docs-pitch)
+      [[ "$file" == README.md \
+        || "$file" == docs/* \
+        || "$file" == pitch/* \
+        || "$file" == PROMPTS.md \
+        || "$file" == SUBAGENTS.md \
+        || "$file" == COMMIT_LOG.md \
+        || "$file" == team-logs/* ]]
+      ;;
+    git-manager)
+      [[ "$file" == AGENTS.md \
+        || "$file" == TEAM_WORKFLOW.md \
+        || "$file" == PROMPTS.md \
+        || "$file" == SUBAGENTS.md \
+        || "$file" == COMMIT_LOG.md \
+        || "$file" == scripts/* \
+        || "$file" == team-logs/* \
+        || "$file" == .gitignore ]]
+      ;;
+    architect)
+      [[ "$file" == AGENTS.md \
+        || "$file" == TEAM_WORKFLOW.md \
+        || "$file" == README.md \
+        || "$file" == docs/* \
+        || "$file" == contracts/* \
+        || "$file" == schemas/* \
+        || "$file" == architecture/* ]]
+      ;;
+    reviewer)
+      [[ "$file" == team-logs/* ]]
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+changed_files=()
+while IFS= read -r file; do
+  changed_files+=("$file")
+done < <(
+  {
+    git diff --name-only
+    git diff --name-only --cached
+    git ls-files --others --exclude-standard
+  } | sort -u
+)
+
+out_of_scope=()
+for file in "${changed_files[@]}"; do
+  if [[ -n "$file" ]] && ! allowed_for_role "$file"; then
+    out_of_scope+=("$file")
+  fi
+done
+
+if (( ${#out_of_scope[@]} > 0 )) && [[ "${TEAM_ALLOW_OUT_OF_SCOPE:-0}" != "1" ]]; then
+  echo "Role '$role' has out-of-scope files:" >&2
+  printf '  %s\n' "${out_of_scope[@]}" >&2
+  echo "Ask git-manager/architect, or rerun with TEAM_ALLOW_OUT_OF_SCOPE=1 if this is intentional." >&2
+  exit 1
+fi
+
+mkdir -p team-logs
+
+timestamp="$(date '+%Y-%m-%d %H:%M:%S %z')"
+
+{
+  echo
+  echo "## $timestamp"
+  echo
+  echo "- member: $member"
+  echo "- role: $role"
+  echo "- branch: $branch"
+  echo "- summary: $message"
+  echo
+  echo '```text'
+  git status --short
+  echo '```'
+} >> "$log_file"
+
+stage_files=("${changed_files[@]}" "$log_file")
+git add -- "${stage_files[@]}"
+
+if git diff --cached --quiet; then
+  echo "Nothing to commit after updating $log_file."
+  exit 0
+fi
+
+git status --short
+git commit -m "chore($member): $message"
+
+echo "Committed hourly checkpoint for $member on $branch."
