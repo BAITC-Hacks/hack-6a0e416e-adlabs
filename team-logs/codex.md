@@ -77,3 +77,21 @@ A  frontend/tsconfig.node.json
 A  frontend/vite.config.ts
 ?? team-logs/codex.md
 ```
+
+## 2026-09-23 16:34:10 +0500
+
+- member: codex
+- role: architect
+- branch: codex/fullstack-career-quest
+- summary: add production runtime and CI
+
+```text
+A  .dockerignore
+A  .github/workflows/ci.yml
+M  README.md
+M  compose.yml
+M  contracts/env.md
+M  frontend/Dockerfile
+A  frontend/nginx.conf
+ M team-logs/codex.md
+```

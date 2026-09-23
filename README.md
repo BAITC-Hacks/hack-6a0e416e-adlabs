@@ -31,7 +31,7 @@ See [contracts/demo-flow.md](contracts/demo-flow.md) for the presentation script
 ## Architecture
 
 - `backend/`: Django 5 + Django REST Framework; PostgreSQL in Compose and SQLite for lightweight local development/tests.
-- `frontend/`: React 19 + TypeScript + Vite; responsive employee and HR interfaces.
+- `frontend/`: React 19 + TypeScript + Vite; responsive employee and HR interfaces, served by Nginx in Compose.
 - `datasets/career_quest/`: source JSON/CSV dataset imported by `import_career_dataset`.
 - `contracts/`: API, environment, and demo contracts.
 
@@ -63,6 +63,8 @@ npm run dev
 .venv/bin/python backend/manage.py test career
 cd frontend && npm run lint && npm test && npm run build
 ```
+
+GitHub Actions repeats both test suites and runs a clean Compose smoke test for every push and pull request.
 
 ## Team workflow
 

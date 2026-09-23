@@ -17,4 +17,4 @@ Copy `.env.example` to `.env` only when overriding the local defaults.
 | `POSTGRES_PORT` | backend | no | `5432` |
 | `CAREER_DATASET_PATH` | backend | no | Repository `datasets/career_quest` directory |
 | `CAREER_SNAPSHOT_DATE` | backend | no | `2026-10-01` |
-| `VITE_API_BASE_URL` | frontend | no | `http://localhost:8000/api/v1` |
+| `VITE_API_BASE_URL` | frontend build | no | `http://localhost:8000/api/v1`; baked into the production bundle |
