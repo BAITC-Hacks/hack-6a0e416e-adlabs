@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-career_quest}
+      POSTGRES_USER: ${POSTGRES_USER:-career_quest}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-career_quest}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-career_quest}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - career_quest_db:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-career-quest-local-secret}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
+      POSTGRES_DB: ${POSTGRES_DB:-career_quest}
+      POSTGRES_USER: ${POSTGRES_USER:-career_quest}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-career_quest}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+volumes:
+  career_quest_db:
