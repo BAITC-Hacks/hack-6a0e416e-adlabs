@@ -8,7 +8,7 @@ from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .models import ActivityHistory, Employee, EmployeeQuest, LearningEvent, RoleProfile, XPTransaction
+from .models import ActivityHistory, ChatTurn, Employee, EmployeeQuest, LearningEvent, RoleProfile, XPTransaction
 from .services import career_snapshot, effective_skills, prerequisite_chain, serialize_event
 
 
@@ -168,6 +168,40 @@ def complete_quest(request, event_id):
                      "next_quest": next((q for q in after["recommendations"] if not q["locked"]), None)})
 
 
+def serialize_chat_turn(turn):
+    return {"id": turn.id, "question": turn.question, "answer": turn.answer,
+            "mode": turn.mode, "created_at": turn.created_at.isoformat()}
+
+
+@api_view(["GET", "DELETE"])
+def chat_history(request, employee_id):
+    employee = get_object_or_404(Employee, external_id=employee_id)
+    records = employee.chat_turns.all()
+    if request.method == "DELETE":
+        records.delete()
+        return Response({"turns": [], "has_more": False, "next_before": None})
+    before = request.query_params.get("before")
+    if before is not None:
+        try:
+            before = int(before)
+            if not 0 < before <= 9223372036854775807:
+                raise ValueError
+        except (ValueError, TypeError):
+            return error("INVALID_CURSOR", "Invalid history cursor")
+        records = records.filter(id__lt=before)
+    records = list(records.order_by("-id")[:26])
+    turns = list(reversed(records[:25]))
+    return Response({"turns": [serialize_chat_turn(turn) for turn in turns],
+                     "has_more": len(records) > 25,
+                     "next_before": turns[0].id if len(records) > 25 else None})
+
+
+def save_chat_answer(employee, question, answer, mode):
+    # One row stores a complete exchange; provider failures cannot leave an orphan question.
+    turn = ChatTurn.objects.create(employee=employee, question=question, answer=answer, mode=mode)
+    return Response({"answer": answer, "mode": mode, "turn": serialize_chat_turn(turn)})
+
+
 @api_view(["POST"])
 def chat(request):
     employee = selected_employee(request)
@@ -188,18 +222,28 @@ def chat(request):
         try:
             from openai import OpenAI
             client = OpenAI(api_key=key, timeout=20)
+            history = []
+            for turn in reversed(list(employee.chat_turns.order_by("-id")[:10])):
+                history.extend([{"role": "user", "content": turn.question},
+                                {"role": "assistant", "content": turn.answer[:6000]}])
             response = client.responses.create(
                 model=settings.OPENAI_MODEL,
                 instructions=(f"You are Career Quest's career coach. Answer in language code {language}. "
                               "Use only the supplied structured employee context. Never invent events, "
                               "skill values or readiness. Do not claim to change quest state. "
-                              "If data is missing, say so. Keep answers concise."),
-                input=f"Context: {allowed}\nEmployee question: {question}",
+                              "If data is missing, say so. Keep answers concise. "
+                              "Use conversation history to understand follow-up questions. "
+                              "The current career context overrides outdated facts in history."),
+                input=history + [{"role": "user", "content":
+                       f"Current career context: {allowed}\nEmployee question: {question}"}],
                 store=False,
             )
-            return Response({"answer": response.output_text, "mode": "openai"})
+            answer = response.output_text.strip()
+            if not answer:
+                return error("AI_PROVIDER_UNAVAILABLE", "AI returned an empty answer", 503)
         except Exception:
             return error("AI_PROVIDER_UNAVAILABLE", "AI provider is temporarily unavailable", 503)
+        return save_chat_answer(employee, question, answer, "openai")
     gaps = sorted((g for g in snap["gaps"] if g["gap"] > 0),
                   key=lambda g: (-g["critical"], -g["gap"], g["name"]))
     next_quest = next((q for q in snap["recommendations"] if not q["locked"]), None)
@@ -222,4 +266,4 @@ def chat(request):
                                 after=next_quest["readiness_after"])
     else:
         answer = copy[2].format(readiness=snap["readiness"])
-    return Response({"answer": answer, "mode": "deterministic"})
+    return save_chat_answer(employee, question, answer, "deterministic")

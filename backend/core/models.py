@@ -78,3 +78,15 @@ class XPTransaction(models.Model):
     amount = models.PositiveIntegerField()
     reason = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class ChatTurn(models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="chat_turns")
+    question = models.TextField()
+    answer = models.TextField()
+    mode = models.CharField(max_length=20)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["id"]
+        indexes = [models.Index(fields=["employee", "id"], name="chat_employee_id_idx")]

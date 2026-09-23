@@ -12,6 +12,7 @@ urlpatterns = [
     path("employees/<str:employee_id>/recommendations/", views.recommendations),
     path("employees/<str:employee_id>/quests/", views.quests),
     path("employees/<str:employee_id>/career-goal/", views.change_goal),
+    path("employees/<str:employee_id>/chat-history/", views.chat_history),
     path("quests/<str:event_id>/start/", views.start_quest),
     path("quests/<str:event_id>/complete/", views.complete_quest),
     path("ai/chat/", views.chat),
