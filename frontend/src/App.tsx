@@ -317,6 +317,7 @@ function NavigatorPanel({ employeeId, onClose }: { employeeId: string; onClose: 
    const [error, setError] = useState<string | null>(null);
    const prompts: { label: string; intent: NavigatorIntent }[] = [
      { label: 'Почему мне подходит первый курс?', intent: 'why_course' },
+     { label: 'Как перейти в другую роль?', intent: 'career_transition' },
      { label: 'Почему первая активность лучше второй?', intent: 'compare' },
      { label: 'Что мешает перейти к цели?', intent: 'blockers' },
      { label: 'Какой навык освоить первым?', intent: 'first_skill' },
@@ -338,7 +339,7 @@ function NavigatorPanel({ employeeId, onClose }: { employeeId: string; onClose: 
      <div className="suggested-prompts">{prompts.map((prompt) => <button key={prompt.intent} onClick={() => void ask(prompt.label, prompt.intent)} disabled={busy}>{prompt.label}</button>)}</div>
      {error && <div className="error-box" role="alert">{error}</div>}
      {busy && <LoadingPanel label="Сверяем данные..." />}
-     {answer && <div className="navigator-answer" aria-live="polite"><span className="section-kicker">ОТВЕТ · {answer.provider === 'template' ? 'Offline explanation' : answer.provider === 'nvidia' ? 'NVIDIA NIM' : 'OpenAI'}</span><h3>{answer.summary}</h3><ul>{answer.profile_facts.map((fact) => <li key={fact}>{fact}</li>)}</ul><h4>Почему</h4><p>{answer.reason}</p><h4>Ожидаемый эффект</h4><p>{answer.expected_effect}</p><h4>Ограничение</h4><p>{answer.limitation}</p><h4>Следующий шаг</h4><p>{answer.next_step}</p><small>Источники: {answer.evidence_ids.join(', ')}</small></div>}
+     {answer && <div className="navigator-answer" aria-live="polite"><span className="section-kicker">ОТВЕТ · {answer.provider === 'template' ? 'Шаблонный ответ' : answer.provider === 'nvidia' ? 'NVIDIA NIM' : 'OpenAI'}</span><h3>{answer.summary}</h3><ul>{answer.profile_facts.map((fact) => <li key={fact}>{fact}</li>)}</ul><h4>Почему</h4><p>{answer.reason}</p><h4>Ожидаемый эффект</h4><p>{answer.expected_effect}</p><h4>Ограничение</h4><p>{answer.limitation}</p><h4>Следующий шаг</h4><p>{answer.next_step}</p><small>Источники: {answer.evidence_ids.join(', ')}</small></div>}
    </div><form className="chat-input" onSubmit={(event) => { event.preventDefault(); void ask(question); }}><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Задайте вопрос о карьере..." aria-label="Вопрос Navigator" /><button disabled={busy || !question.trim()} aria-label="Отправить вопрос"><ArrowRight size={19} /></button></form></aside></div>;
  }
 

@@ -3,11 +3,17 @@
 import json
 import shutil
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.data import DEFAULT_DATA_DIR, DatasetError, load_dataset
 from backend.app.main import app
 from backend.app.services.ai_provider import OpenAIProvider, TemplateAIProvider
+
+
+@pytest.fixture(autouse=True)
+def offline_api_tests(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "template")
 
 
 def test_dataset_loads_from_any_working_directory(monkeypatch, tmp_path):
@@ -164,3 +170,33 @@ def test_repeatable_history_can_enroll_again_and_time_budget_is_respected():
     }).json()
     assert answer["intent"] == "four_hours"
     assert "2 ч в неделю" in answer["summary"]
+
+
+def test_free_text_career_change_answer_addresses_the_goal(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "template")
+    data = load_dataset()
+    app.state.dataset = data
+    app.state.data_error = None
+    response = TestClient(app).post("/api/employees/E0100/navigator/ask", json={
+        "question": "Я хочу перейти в другую роль. Что мне делать и почему?",
+    })
+    assert response.status_code == 200, response.text
+    answer = response.json()
+    assert answer["intent"] == "career_transition"
+    assert "цель" in answer["summary"].lower()
+    assert "разрыв" in answer["reason"].lower()
+    assert answer["next_step"]
+
+
+def test_free_text_event_id_selects_the_mentioned_activity(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "template")
+    data = load_dataset()
+    app.state.dataset = data
+    app.state.data_error = None
+    response = TestClient(app).post("/api/employees/E0001/navigator/ask", json={
+        "question": "Можно ли начать EV_006?",
+    })
+    assert response.status_code == 200, response.text
+    answer = response.json()
+    assert "EV_006" in answer["evidence_ids"]
+    assert "недоступна" in answer["summary"]

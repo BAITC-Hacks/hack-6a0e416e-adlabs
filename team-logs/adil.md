@@ -150,3 +150,26 @@ A  scripts/demo_smoke_test.py
 ?? scripts/check_ai_providers.py
 ?? scripts/eval_ai_providers.py
 ```
+
+## 2026-09-23 17:48:00 +0500
+
+- member: adil
+- role: git-manager
+- branch: adil/integration-mvp
+- summary: verify OpenAI Navigator and improve free text answers
+
+```text
+ M README.md
+ M backend/app/models.py
+ M backend/app/services/ai_provider.py
+ M backend/app/services/navigator.py
+ M backend/tests/test_api.py
+ M docs/AI_INTEGRATION.md
+ M docs/FINAL_CHECKLIST.md
+ M docs/JURY_QA.md
+ M docs/JURY_SCORECARD.md
+ M frontend/src/App.tsx
+ M frontend/src/types.ts
+ M scripts/check_ai_providers.py
+ M scripts/eval_ai_providers.py
+```

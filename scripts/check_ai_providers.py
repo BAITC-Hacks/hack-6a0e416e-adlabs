@@ -24,12 +24,13 @@ def main() -> int:
     print("template: PASS")
     status = get_ai_status()
     configured = {"nvidia": status["nvidia_configured"], "openai": status["openai_configured"]}
+    selected = {status["configured_provider"], status["fallback_provider"]} - {"template"}
     failed = False
     requests = 0
     for name, provider in (("nvidia", NvidiaProvider()), ("openai", OpenAIProvider())):
         if not configured[name]:
-            print(f"{name}: BLOCKED_BY_MISSING_KEY")
-            failed = True
+            print(f"{name}: {'BLOCKED_BY_MISSING_KEY' if name in selected else 'SKIPPED_NOT_SELECTED'}")
+            failed |= name in selected
             continue
         started = perf_counter()
         requests += 1

@@ -48,6 +48,7 @@ def _score(result: dict, packet: dict) -> dict:
 def main() -> int:
     data = load_dataset()
     status = get_ai_status()
+    selected = {status["configured_provider"], status["fallback_provider"]} - {"template"}
     requests = 0
     failures = 0
     for label, employee_id, question, intent, event_id in CASES:
@@ -66,8 +67,9 @@ def main() -> int:
         print(f"case={label} template=PASS")
         for name, provider in (("nvidia", NvidiaProvider()), ("openai", OpenAIProvider())):
             if not status[f"{name}_configured"]:
-                print(f"case={label} provider={name} result=BLOCKED_BY_MISSING_KEY")
-                failures += 1
+                state = "BLOCKED_BY_MISSING_KEY" if name in selected else "SKIPPED_NOT_SELECTED"
+                print(f"case={label} provider={name} result={state}")
+                failures += name in selected
                 continue
             started = perf_counter()
             requests += 1

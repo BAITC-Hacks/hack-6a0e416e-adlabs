@@ -243,7 +243,7 @@ class ActivityHistoryResponse(BaseModel):
 
 class NavigatorRequest(BaseModel):
     question: str = Field(min_length=1, max_length=500)
-    intent: Literal["why_course", "compare", "blockers", "first_skill", "after_activity", "faster_route", "four_hours", "data_sources", "disagree", "general"] | None = None
+    intent: Literal["why_course", "compare", "blockers", "first_skill", "after_activity", "faster_route", "four_hours", "data_sources", "disagree", "career_transition", "general"] | None = None
     event_id: str | None = None
     weekly_hours: float | None = Field(default=None, gt=0, le=80)
 

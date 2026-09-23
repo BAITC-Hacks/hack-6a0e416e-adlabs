@@ -118,6 +118,10 @@ def activity_details(data: Dataset, employee_id: str, event_id: str, provider: B
 
 def ask_navigator(data: Dataset, employee_id: str, question: str, intent: str | None,
                   event_id: str | None, weekly_hours: float | None, provider: BaseAIProvider) -> dict:
+    if event_id is None:
+        mentioned_event = re.search(r"\bEV_\d{3}\b", question, flags=re.IGNORECASE)
+        if mentioned_event and mentioned_event.group().upper() in data.events:
+            event_id = mentioned_event.group().upper()
     employee = data.employees[employee_id]
     gap = calculate_skill_gap(data, employee_id)
     recommendations = recommend_activities(data, employee_id, provider)["recommendations"]
@@ -127,6 +131,7 @@ def ask_navigator(data: Dataset, employee_id: str, question: str, intent: str | 
     if intent is None:
         intent = ("data_sources" if any(word in lower for word in ("какие данные", "источник", "данные использ")) else
                   "disagree" if any(word in lower for word in ("не соглас", "оспор", "не подходит")) else
+                  "career_transition" if any(word in lower for word in ("сменить роль", "смена роли", "другую роль", "перейти в", "перейти на", "карьерн", "повышен", "должност")) else
                   "compare" if any(word in lower for word in ("лучше второй", "лучше другой", "сравни", "первую и вторую")) else
                   "after_activity" if any(word in lower for word in ("после", "изменится", "заверш")) else
                   "blockers" if any(word in lower for word in ("мешает", "барьер", "разрыв")) else
@@ -208,6 +213,13 @@ def ask_navigator(data: Dataset, employee_id: str, question: str, intent: str | 
             reason = "Расчёт зависит от уровней навыков, карьерной цели и описаний активностей в датасете."
             effect = "После исправления исходных данных при следующей загрузке расчёт изменится; отзыв в демо не сохраняется."
             next_step = "Проверьте навык и цель в профиле, затем передайте конкретное расхождение HR."
+        elif intent == "career_transition":
+            summary = f"Ваша цель — {target['role']} {target['grade']}; сейчас готовность {gap['progress_pct']}%."
+            reason = (f"До цели остаётся разрыв {gap['total_gap_points']} по {len(open_skills)} навыкам. "
+                      f"Первым стоит развивать {first['name']}: текущий уровень {first['current_level']}, "
+                      f"требуемый {first['required_level']}.") if first else "Разрыв по навыкам отсутствует."
+            next_step = (f"Начните с {roadmap['steps'][0]['recommendation']['title']} и после завершения "
+                         "проверьте пересчитанную готовность.") if roadmap["steps"] else "Обсудите цель и доступные активности с руководителем."
         elif intent == "blockers":
             summary = f"Главный барьер: {first['name']} — разрыв {first['gap']} по шкале навыка." if first else "Разрыв невелик."
             reason = f"Всего открыто {len(open_skills)} навыков; критичный разрыв — {gap['critical_gap_points']} балл."
@@ -225,7 +237,9 @@ def ask_navigator(data: Dataset, employee_id: str, question: str, intent: str | 
             summary = f"При {hours:g} ч в неделю на {selected['title']} потребуется минимум {weeks} нед."
             effect += " Это оценка только по длительности активности."
         else:
-            summary = f"Рекомендую начать с {selected['title']}."
+            summary = (f"По текущей цели {target['role']} {target['grade']} готовность составляет "
+                       f"{gap['progress_pct']}%; первый доступный шаг — {selected['title']}.")
+            next_step = "Уточните вопрос о навыке, активности, сроках или карьерной цели, если нужен более точный ответ."
     limitation = "Прогноз основан на данных датасета и не гарантирует повышение; действия в демо хранятся до перезапуска API."
     result = {"employee_id": employee_id, "provider": "template", "intent": intent,
               "summary": summary, "profile_facts": facts, "reason": reason,

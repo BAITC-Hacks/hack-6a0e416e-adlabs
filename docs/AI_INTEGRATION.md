@@ -9,19 +9,19 @@
 | Компонент | Состояние |
 | --- | --- |
 | TemplateAIProvider | Работает offline; браузер и smoke test подтверждены |
-| OpenAIProvider | Адаптер реализован, mock HTTP тесты прошли; живой ключ отсутствует |
-| NvidiaProvider | Адаптер реализован, mock HTTP тесты прошли; живой ключ отсутствует |
-| A/B и выбор primary | BLOCKED_BY_MISSING_KEY; реальных ответов и latency нет |
+| OpenAIProvider | Живой вызов `gpt-4o-mini` прошёл; локально выбран primary |
+| NvidiaProvider | Адаптер и mock HTTP тесты прошли; ключа нет, провайдер не выбран |
+| Проверка качества | Пять evidence packets прошли schema, ID и numeric validation; фактическую корректность следует оценивать вручную |
 
-Выполнено **0 реальных API-запросов**. Пока нельзя заявлять, что OpenAI или NVIDIA уже работает в демо, или выбирать primary по качеству.
+Выполнены живой smoke check, пять eval-запросов и запросы к работающему backend. Для вопроса о смене роли API вернул `provider=openai`, а `/api/ai/status` показал `active_provider=openai`. NVIDIA остаётся неподключённым. Локальный `.env` игнорируется Git; ключ в репозитории отсутствует.
 
-## Проверка после добавления ключей
+## Повторная проверка на другой машине
 
 1. Заполнить только локальный игнорируемый Git файл `.env` из `.env.example`. Не вставлять ключи в чат, логи или Git.
-2. Установить `AI_PROVIDER=nvidia`, `AI_FALLBACK_PROVIDER=openai` либо обратный порядок.
-3. Запустить `.\.venv\Scripts\python.exe scripts\check_ai_providers.py`: по одному минимальному вызову к каждому API, Pydantic schema и latency.
-4. Запустить `.\.venv\Scripts\python.exe scripts\eval_ai_providers.py`: пять evidence packets, один ответ каждого провайдера на кейс, без повторных попыток. Просмотреть факты и русскоязычные ответы вручную вместе с автоматическими метриками.
-5. Выбрать primary по достоверности, структуре ответа и задержке. Нестабильный сервис не ставить в основной demo flow. TemplateAIProvider остаётся последним fallback.
+2. Установить `AI_PROVIDER=openai`, `AI_FALLBACK_PROVIDER=template`; NVIDIA не требуется.
+3. Запустить `.\.venv\Scripts\python.exe scripts\check_ai_providers.py`: один минимальный живой вызов выбранного API и проверка схемы.
+4. Запустить `.\.venv\Scripts\python.exe scripts\eval_ai_providers.py`: пять evidence packets и ответы выбранного провайдера. Просмотреть фактическую точность вручную.
+5. При ошибке внешнего API Navigator переключается на TemplateAIProvider.
 6. Перезапустить backend, задать вопрос в браузере, сверить badge, `GET /api/ai/status` и `evidence_ids` с исходным packet.
 
-Финальная проверка кода без live-ключей: 23 backend-теста прошли; frontend typecheck и build прошли; demo smoke test: E0100 71,9% → 81,2%. Оба live-скрипта возвращают `BLOCKED_BY_MISSING_KEY`.
+OpenAI smoke check прошёл за 4–6 секунд; пять eval-вызовов заняли примерно 2,3–4,4 секунды каждый. Скрипты пропускают NVIDIA, если он не выбран. У одного из пяти кейсов эвристика `personalized` дала `False`; это не ошибка схемы, а повод проверить формулировку ответа вручную. Demo smoke test: E0100 71,9% → 81,2%.
