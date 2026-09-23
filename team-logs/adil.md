@@ -26,6 +26,7 @@ A  team-logs/adil.md
 - role: architect
 - branch: adil/integration-mvp
 - summary: career quest mvp
+- scope: this integration checkpoint intentionally included backend, frontend, ml, docs, contracts, tests, and root configuration. TEAM_ALLOW_OUT_OF_SCOPE=1 was used because the team-commit role guard otherwise blocks a single cross-area MVP checkpoint.
 
 ```text
 A  .env.example
@@ -59,4 +60,15 @@ A  frontend/vite.config.ts
 A  ml/__init__.py
 A  ml/engine.py
 A  tests/test_engine.py
+```
+
+## 2026-09-23 16:11:16 +0500
+
+- member: adil
+- role: architect
+- branch: adil/integration-mvp
+- summary: bootstrap runnable Career Quest MVP
+
+```text
+M  team-logs/adil.md
 ```
