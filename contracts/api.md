@@ -1,22 +1,35 @@
-# API Contract
+# Career Quest MVP API
 
-Status: draft
+Base URL: `http://localhost:8000`; all paths begin with `/api`. JSON uses UTF-8 and `snake_case`; dates are ISO `YYYY-MM-DD`. No authentication in this demo. The Employee/HR entry choice changes the UI only. Shared wire models are in [types.md](types.md).
 
-## Base URL
+The backend loads dataset files relative to the repository, independent of launch directory. Use the dataset `as_of_date` (`2026-10-01` in the supplied data) for dates and session filtering, never the computer clock. GET requests have no body. All responses are `application/json`.
 
-```text
-TBD
-```
+| Method and path | Request | 200 response | Other responses |
+| --- | --- | --- | --- |
+| `GET /api/health` | None | `HealthResponse` | `503 data_unavailable` if data cannot load |
+| `GET /api/employees` | None | `EmployeeListResponse`, all employees sorted by full name then ID | `503 data_unavailable` |
+| `GET /api/employees/{employee_id}` | Path ID | `EmployeeProfileResponse` | `404 not_found` |
+| `GET /api/employees/{employee_id}/skill-gap` | Path ID | `SkillGapResponse` | `404 not_found` |
+| `GET /api/employees/{employee_id}/recommendations` | Path ID | `RecommendationsResponse` with 0–3 items sorted by score descending, then event ID | `404 not_found` |
+| `GET /api/employees/{employee_id}/roadmap` | Path ID | `RoadmapResponse` | `404 not_found` |
+| `POST /api/employees/{employee_id}/activities/{event_id}/complete` | Path IDs; no body or `{}` | `CompletionResponse` | `404 not_found`, `409 already_completed`, `422 invalid_activity` |
+| `GET /api/hr/overview` | None | `HROverviewResponse` | `503 data_unavailable` |
 
-## Endpoints
+## Endpoint behavior
 
-Document each endpoint before frontend/backend integration:
+`GET /api/employees/{employee_id}` returns dataset profile fields plus effective skill levels after in-memory simulation. Its `target` follows the target-resolution rule in [MVP_SPEC.md](../docs/MVP_SPEC.md).
 
-```text
-METHOD /path
-request:
-response:
-errors:
-owner:
-```
+`skill-gap` includes every target-required skill, including met skills. Without a target it returns `status: "no_target"`, null progress, zero totals, and an empty `skills` array. A fully met target returns `status: "ready"`. Missing skill levels count as zero.
+
+`recommendations` returns an empty array when no target, no remaining gap, or no eligible event exists. Each recommendation carries event fields, score and five weighted components, matched skill gains, projected progress, and a template explanation. No LLM chooses or orders activities.
+
+`roadmap` computes up to three **sequential** distinct recommendations against a copy of skills, recalculating after each virtual completion. It never mutates session state. Status is `in_progress`, `ready`, `no_target`, or `no_activities`; the last means a positive gap with no eligible recommendation. Null progress is reserved for `no_target`.
+
+`complete` applies event gains to effective in-memory skills and returns the refreshed gap, recommendations, and roadmap. Subsequent GET calls see the same state until backend restart. The JSON/CSV source is unchanged. The action simulates completion immediately, even when the next real session is in the future. A historically or session-completed nonrepeatable event returns `409`; `EV_036` is repeatable. Mandatory, role/grade-ineligible, prerequisite-blocked, or session-unavailable activities return `422`. An eligible event may complete with no effective gain when capped at `max_level`, but recommendations omit activities that close no target gap.
+
+`hr/overview` aggregates current effective state: employee and goal counts, ready/no-target counts, average target progress, grade counts, and department summaries. Exclude null progress from averages.
+
+## Error shape
+
+`{ "error": { "code": "not_found", "message": "Employee E9999 not found" } }`. Other codes: `already_completed`, `invalid_activity`, `data_unavailable`, `validation_error`. Frontend displays `message` and offers retry where applicable.
 

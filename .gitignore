@@ -1,0 +1,15 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Node/Vite
+node_modules/
+dist/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example

@@ -19,3 +19,44 @@ A  datasets/career_quest/skills.json
 A  docs/career-quest/Career_Quest_technical_spec.pdf
 A  team-logs/adil.md
 ```
+
+## 2026-09-23 16:00:20 +0500
+
+- member: adil
+- role: architect
+- branch: adil/integration-mvp
+- summary: career quest mvp
+
+```text
+A  .env.example
+A  .gitignore
+M  README.md
+A  backend/__init__.py
+A  backend/app/__init__.py
+A  backend/app/data.py
+A  backend/app/main.py
+A  backend/app/models.py
+A  backend/app/services/__init__.py
+A  backend/app/services/ai_provider.py
+A  backend/app/services/navigator.py
+A  backend/requirements.txt
+A  backend/tests/test_api.py
+M  contracts/api.md
+A  contracts/types.md
+A  docs/MVP_SPEC.md
+A  frontend/.gitignore
+A  frontend/index.html
+A  frontend/package-lock.json
+A  frontend/package.json
+A  frontend/src/App.tsx
+A  frontend/src/api.ts
+A  frontend/src/main.tsx
+A  frontend/src/styles.css
+A  frontend/src/types.ts
+A  frontend/src/vite-env.d.ts
+A  frontend/tsconfig.json
+A  frontend/vite.config.ts
+A  ml/__init__.py
+A  ml/engine.py
+A  tests/test_engine.py
+```
